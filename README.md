@@ -200,7 +200,148 @@ screen -t server 2
    # Logs will be saved to screenlog.0
    ```
 
+
 4. Check for detached sessions before creating new ones
    ```bash
    screen -ls
    ```
+
+## File Transfer with SCP and Rsync
+
+### SCP (Secure Copy)
+#### Basic Syntax
+- `scp [options] [source] [destination]`
+
+#### Common Options
+- `-r` - Recursively copy directories
+- `-p` - Preserve modification times and permissions
+- `-P [port]` - Specify different SSH port
+- `-i [identity_file]` - Specify SSH private key
+- `-l [limit]` - Limit bandwidth in Kbit/s
+- `-q` - Quiet mode (suppress progress)
+- `-v` - Verbose mode for debugging
+
+#### Common Usage Examples
+```bash
+# Copy local file to remote server
+scp file.txt user@remote:/path/to/destination/
+
+# Copy remote file to local system
+scp user@remote:/path/to/file.txt /local/path/
+
+# Copy entire directory
+scp -r /local/directory user@remote:/path/to/destination/
+
+# Copy using specific SSH port
+scp -P 2222 file.txt user@remote:/path/
+
+# Copy using specific SSH key
+scp -i ~/.ssh/private_key file.txt user@remote:/path/
+
+# Copy between two remote hosts
+scp user1@remote1:/file.txt user2@remote2:/path/
+
+# Copy preserving file attributes
+scp -p file.txt user@remote:/path/
+```
+
+### Rsync (Remote Sync)
+#### Basic Syntax
+- `rsync [options] [source] [destination]`
+
+#### Common Options
+- `-a` - Archive mode (recursive, preserves permissions, etc.)
+- `-v` - Verbose output
+- `-z` - Compress during transfer
+- `-P` - Show progress and allow resuming
+- `--delete` - Delete files in destination that don't exist in source
+- `--exclude=[pattern]` - Exclude files matching pattern
+- `--include=[pattern]` - Include files matching pattern
+- `--dry-run` - Simulate the transfer without making changes
+
+#### Important Rsync Flags Explained
+```bash
+-a  # Archive mode, equals -rlptgoD
+    # -r: recursive
+    # -l: copy symlinks as symlinks
+    # -p: preserve permissions
+    # -t: preserve times
+    # -g: preserve group
+    # -o: preserve owner
+    # -D: preserve device files and special files
+
+-z  # Compress during transfer
+-P  # Combine --progress and --partial
+    # Shows progress and allows resuming interrupted transfers
+```
+
+#### Common Usage Examples
+```bash
+# Sync local directory to remote server
+rsync -avzP /local/directory/ user@remote:/path/to/destination/
+
+# Sync remote directory to local system
+rsync -avzP user@remote:/path/to/directory/ /local/path/
+
+# Sync with deletion (mirror)
+rsync -avzP --delete /source/ /destination/
+
+# Exclude specific files or directories
+rsync -avzP --exclude='*.txt' --exclude='temp/' /source/ /destination/
+
+# Dry run to see what would be transferred
+rsync -avzP --dry-run /source/ /destination/
+
+# Using specific SSH port
+rsync -avzP -e 'ssh -p 2222' /source/ user@remote:/destination/
+
+# Sync only specific file types
+rsync -avzP --include='*.php' --include='*.html' --exclude='*' /source/ /destination/
+
+# Resume interrupted transfer
+rsync -avzP --partial /source/ /destination/
+```
+
+#### Best Practices
+1. Always use `-avzP` for general transfers
+   ```bash
+   rsync -avzP /source/ /destination/
+   ```
+
+2. Test with --dry-run before large transfers
+   ```bash
+   rsync -avzP --dry-run /source/ /destination/
+   ```
+
+3. Use trailing slashes correctly
+   ```bash
+   # With trailing slash: copy contents of dir1 into dir2
+   rsync -avzP /path/to/dir1/ /path/to/dir2/
+   
+   # Without trailing slash: copy dir1 itself into dir2
+   rsync -avzP /path/to/dir1 /path/to/dir2/
+   ```
+
+4. Use `--delete` carefully
+   ```bash
+   # First do a dry run
+   rsync -avzP --delete --dry-run /source/ /destination/
+   
+   # Then perform the actual sync
+   rsync -avzP --delete /source/ /destination/
+   ```
+
+#### Common Rsync Scenarios
+```bash
+# Backup with timestamp
+rsync -avzP /source/ /backup/$(date +%Y%m%d)/
+
+# Sync while excluding version control directories
+rsync -avzP --exclude='.git/' --exclude='.svn/' /source/ /destination/
+
+# Sync only newer files
+rsync -avzP --update /source/ /destination/
+
+# Sync with bandwidth limit
+rsync -avzP --bwlimit=1000 /source/ /destination/  # Limit to 1000 KB/s
+```

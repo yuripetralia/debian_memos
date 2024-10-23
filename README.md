@@ -343,5 +343,194 @@ rsync -avzP --exclude='.git/' --exclude='.svn/' /source/ /destination/
 rsync -avzP --update /source/ /destination/
 
 # Sync with bandwidth limit
+
+
 rsync -avzP --bwlimit=1000 /source/ /destination/  # Limit to 1000 KB/s
+```
+
+## SSH Advanced Guide
+
+### Basic SSH Commands
+```bash
+# Basic connection
+ssh user@hostname
+
+# Using specific port
+ssh -p 2222 user@hostname
+
+# Using specific identity file
+ssh -i ~/.ssh/private_key user@hostname
+
+# Verbose mode for debugging
+ssh -v user@hostname
+```
+
+### SSH Key Management
+```bash
+# Generate new SSH key pair
+ssh-keygen -t ed25519 -C "your_email@example.com"
+
+# Generate RSA key (if ed25519 not supported)
+ssh-keygen -t rsa -b 4096 -C "your_email@example.com"
+
+# Copy public key to server
+ssh-copy-id user@hostname
+
+# Copy public key to server with custom port
+ssh-copy-id -p 2222 user@hostname
+
+# Manual key copy (if ssh-copy-id not available)
+cat ~/.ssh/id_ed25519.pub | ssh user@hostname "mkdir -p ~/.ssh && chmod 700 ~/.ssh && cat >> ~/.ssh/authorized_keys && chmod 600 ~/.ssh/authorized_keys"
+```
+
+### SSH Config File (~/.ssh/config)
+```bash
+# Basic host configuration
+Host myserver
+    HostName 192.168.1.100
+    User username
+    Port 2222
+    IdentityFile ~/.ssh/private_key
+
+# Jump host configuration
+Host private-server
+    HostName 192.168.1.100
+    User username
+    ProxyJump jumphost.example.com
+
+# Multiple hosts with wildcard
+Host *.development
+    User dev-user
+    IdentityFile ~/.ssh/dev_key
+```
+
+### SSH Port Forwarding
+
+#### Local Port Forwarding
+```bash
+# Forward local port to remote server
+ssh -L local_port:destination_host:destination_port user@ssh_host
+
+# Examples:
+# Forward local port 8080 to remote webserver
+ssh -L 8080:localhost:80 user@remote
+
+# Forward local port 3306 to remote MySQL server
+ssh -L 3306:database_host:3306 user@remote
+
+# Make the forwarded port available to other hosts on your network
+ssh -L *:8080:localhost:80 user@remote
+```
+
+### Reverse Port Forwarding (Reverse Tunneling)
+```bash
+# Basic reverse tunnel
+ssh -R remote_port:localhost:local_port user@remote_host
+
+# Examples:
+# Allow remote access to local webserver
+ssh -R 8080:localhost:80 user@remote
+
+# Make the remote port accessible from any interface
+ssh -R *:8080:localhost:80 user@remote
+
+# Persistent reverse tunnel
+ssh -R 8080:localhost:80 -N -o ServerAliveInterval=60 user@remote
+
+# Multiple port forwarding
+ssh -R 8080:localhost:80 -R 3000:localhost:3000 user@remote
+```
+
+### Advanced Reverse Tunnel Scenarios
+
+#### Persistent Reverse Tunnel with Autossh
+```bash
+# Install autossh
+apt install autossh
+
+# Create persistent reverse tunnel
+autossh -M 0 -o "ServerAliveInterval 30" -o "ServerAliveCountMax 3" -R remote_port:localhost:local_port user@remote
+
+# Systemd service for persistent reverse tunnel
+cat << EOF > /etc/systemd/system/reverse-tunnel.service
+[Unit]
+Description=Reverse SSH Tunnel
+After=network.target
+
+[Service]
+Environment="AUTOSSH_GATETIME=0"
+ExecStart=/usr/bin/autossh -M 0 -N -o "ServerAliveInterval 30" -o "ServerAliveCountMax 3" -R remote_port:localhost:local_port user@remote
+Restart=always
+RestartSec=60
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Enable and start the service
+systemctl enable reverse-tunnel
+systemctl start reverse-tunnel
+```
+
+### SSH Tunneling Through Jump Host
+```bash
+# Using ProxyJump (OpenSSH 7.3+)
+ssh -J jump_user@jump_host target_user@target_host
+
+# Multiple jumps
+ssh -J user1@host1,user2@host2 target_user@target_host
+
+# Port forwarding through jump host
+ssh -L 8080:target:80 -J jump_user@jump_host target_user@target
+```
+
+### Security and Performance Options
+```bash
+# Common SSH options
+ssh -o "ServerAliveInterval 60" \  # Keep connection alive
+    -o "ServerAliveCountMax 3" \   # Max alive checks
+    -o "StrictHostKeyChecking yes" \  # Strict host key checking
+    -o "UserKnownHostsFile ~/.ssh/known_hosts" \  # Known hosts file
+    -o "IdentitiesOnly yes" \      # Only use specified keys
+    -C \                           # Enable compression
+    user@hostname
+
+# Speed up multiple file operations
+ssh -o ControlMaster=auto \
+    -o ControlPath=~/.ssh/control:%h:%p:%r \
+    -o ControlPersist=10m \
+    user@hostname
+```
+
+### SSH Escape Sequences
+During an SSH session, press `~?` to see all escape sequences
+```
+Common escape sequences:
+~.  - Terminate connection
+~B  - Send BREAK
+~C  - Open command line
+~R  - Request rekey
+~^Z - Background ssh
+~~  - Send literal ~
+```
+
+### Troubleshooting Tips
+```bash
+# Debug connection issues
+ssh -vvv user@hostname
+
+# Test SSH connection without logging in
+ssh -T user@hostname
+
+# Check SSH server configuration
+ssh -G hostname
+
+# Verify host key
+ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub
+
+# Check SSH agent
+ssh-add -l
+
+# Clear known_hosts entry
+ssh-keygen -R hostname
 ```

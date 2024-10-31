@@ -87,7 +87,6 @@ A comprehensive guide for managing and using Debian Linux systems. This reposito
 
 1. **Navigation**: Use the table of contents to find specific topics
 2. **Practice**: Try commands in a test environment first
-3. **Documentation**: Use `man` pages for detailed command information
 
 ## 🤝 Contributing
 
